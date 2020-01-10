@@ -240,6 +240,24 @@ void shelf() {
   popStyle();
 }
 
+void detection_laser(int progress_frame_count) {
+  pushMatrix();
+  pushStyle();
+  int angle_range = 40;
+  float rpm = 3.0;
+  float time_progress = (progress_frame_count * frameDuration) / 1000.0; // in seconds
+  int current_angle = ceil(angle_range/2*sin(time_progress*rpm*PI)); // deg
+  color laser_color = #ff0000;
+  int laser_length = 150;
+  int laser_width = 2;
+  stroke(laser_color);
+  strokeWeight(laser_width);
+  rotate(radians(current_angle));
+  line(0, 0, 0, laser_length);
+  popStyle();
+  popMatrix();
+}
+
 void screw() {
   pushMatrix();
   pushStyle();
@@ -269,7 +287,7 @@ void screw() {
   line(-head_width/2+head_width*first_factor, 0,
     -head_width/2+head_width*first_factor, head_length);
   line(-head_width/2+head_width*second_factor, 0,
-    -head_width/2+head_width*second_factor, head_length);
+      -head_width/2+head_width*second_factor, head_length);
   // thread
   noStroke();
   fill(lightgray);
@@ -564,12 +582,7 @@ void draw() {
   translate(width/2, height/2);
   scale(1.6);
   translate(-robotPosition, 0);
-  // r2d2
-  pushMatrix();
-  translate(robotPosition, 0);
-  rotate(radians(robotRotation));
-  r2d2();
-  popMatrix();
+  
   // shelf
   pushMatrix();
   translate(0, -r2d2_body_size*1.3);
@@ -580,8 +593,28 @@ void draw() {
     popMatrix();
   }
   popMatrix();
+
+  // r2d2
+  pushMatrix();
+  translate(robotPosition, 0);
+  rotate(radians(robotRotation));
+  if (robotState == RobotState.DETECTING) {
+    pushMatrix();
+    rotate(-PI);
+    detection_laser(frameCount - robotStateStartFrameCount);
+    popMatrix();
+  }
+  r2d2();
+  popMatrix();
+
   popMatrix();
   // directly on screen/overlay
   totalStatistics();
   history(recentHistory, historySizeMax);
+  
+  saveFrame(String.format("%d.png", frameCount));
+  final int recordTimeSec = 20;
+  if (frameCount > recordTimeSec*expectedFrameRate) {
+    exit();
+  }
 } 
