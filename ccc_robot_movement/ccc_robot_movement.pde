@@ -38,8 +38,8 @@ void r2d2() {
   rect(40, -arm_length / 2, arm_width, arm_length);
   rect(-50, -arm_length / 2, arm_width, arm_length);
   stroke(0);
-  line(40+outer_arm_line, -arm_length / 2, 40+outer_arm_line, arm_length / 2);
-  line(-40-outer_arm_line, -arm_length / 2, -40-outer_arm_line, arm_length / 2);
+  line(40+outer_arm_line, -arm_length/2, 40+outer_arm_line, arm_length/2+1);
+  line(-40-outer_arm_line, -arm_length/2, -40-outer_arm_line, arm_length/2+1);
   noStroke();
   // right eye
   pushStyle();
@@ -341,6 +341,27 @@ void nut(color bgcolor) {
   popStyle();
 }
 
+void currentRobotAction() {
+  pushMatrix();
+  pushStyle();
+  int pos = (int) (height*0.1);
+  int labelSize = (int) (height*0.1);
+  String label = "Moving";
+  color walkingColor = #ff5b00;
+  color detectingColor = #21a0ff;
+  fill(walkingColor);
+  if (robotState == RobotState.DETECTING) {
+    label = "Detecting";
+    fill(detectingColor);
+  }
+  float labelWidth = textWidth(label);
+  float startX = (width-labelWidth)/2;
+  textSize(labelSize);
+  text(label, startX, pos);
+  popMatrix();
+  popStyle();
+}
+
 void history(ArrayList<Action> history, int historySizeMax) {
   pushMatrix();
   pushStyle();
@@ -372,6 +393,7 @@ void history(ArrayList<Action> history, int historySizeMax) {
   // bar scale (label in bar)
   stroke(defaultTextColor);
   fill(defaultTextColor);
+  textSize(labelSize);
   int barDuration = 0;
   int barSec = -1;
   // expectedFrameRate = number of frames in one second
@@ -482,6 +504,8 @@ int robotNextShelfGoal = 1; // next shelf to move to (0-shelf_crate_count)
 float robotStartPosition = 0;
 final int shelfCount = 3;
 int[] shelfPositions = new int[shelfCount];
+float world_scale = 1.4;
+int world_vertical_offset = 40;
 
 void setup() {
   size(800, 500);
@@ -579,38 +603,43 @@ void draw() {
   
   // render
   pushMatrix();
-  translate(width/2, height/2);
-  scale(1.6);
-  translate(-robotPosition, 0);
+  {
+    translate(width/2, height/2);
+    // some random offset to move robot/shelfes more close to history/statistics
+    translate(0, world_vertical_offset);
+    scale(world_scale);
+    translate(-robotPosition, 0);
   
-  // shelf
-  pushMatrix();
-  translate(0, -r2d2_body_size*1.3);
-  for (int shelfPosition : shelfPositions) {
+    // shelf
     pushMatrix();
-    translate(shelfPosition, 0);
-    shelf();
+    translate(0, -r2d2_body_size*1.3);
+    for (int shelfPosition : shelfPositions) {
+      pushMatrix();
+      translate(shelfPosition, 0);
+      shelf();
+      popMatrix();
+    }
+    popMatrix();
+
+    // r2d2
+    pushMatrix();
+    translate(robotPosition, 0);
+    rotate(radians(robotRotation));
+    if (robotState == RobotState.DETECTING) {
+      pushMatrix();
+      rotate(-PI);
+      detection_laser(frameCount - robotStateStartFrameCount);
+      popMatrix();
+    }
+    r2d2();
     popMatrix();
   }
   popMatrix();
 
-  // r2d2
-  pushMatrix();
-  translate(robotPosition, 0);
-  rotate(radians(robotRotation));
-  if (robotState == RobotState.DETECTING) {
-    pushMatrix();
-    rotate(-PI);
-    detection_laser(frameCount - robotStateStartFrameCount);
-    popMatrix();
-  }
-  r2d2();
-  popMatrix();
-
-  popMatrix();
   // directly on screen/overlay
-  totalStatistics();
+  currentRobotAction();
   history(recentHistory, historySizeMax);
+  totalStatistics();
   
   saveFrame(String.format("%d.png", frameCount));
   final int recordTimeSec = 20;
